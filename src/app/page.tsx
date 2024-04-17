@@ -1,12 +1,11 @@
-import Image from "next/image";
-import { getCollections } from "./actions";
-import CollectionList from "@/components/CollectionList";
+import { getCollections, getUsers } from "./actions";
+import HomePage from "@/components/HomePage";
 
 export default async function Home() {
   const initialData = await getCollections();
+  const usersData = await getUsers()
+  
   return (
-    <main className="container max-w-4xl">
-      <CollectionList initialData={initialData.collections} initialCursor={initialData.lastCursor} />
-    </main>
+    <HomePage collections={initialData.collections} lastCursor={initialData.lastCursor} users={usersData.users} />
   );
 }

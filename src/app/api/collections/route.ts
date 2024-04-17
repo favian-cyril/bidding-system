@@ -9,11 +9,19 @@ export async function GET(req: NextRequest) {
     const cursor = searchParams.get('cursor');
     const limit = searchParams.get('limit') || 10;
     const collections = await prisma.collection.findMany({
-      skip: 1,
+      skip: cursor ? 1 : undefined,
       take: parseInt(limit as string) + 1, // Fetch one extra record to check if there are more data
       cursor: cursor ? { id: parseInt(cursor as string) } : undefined,
       orderBy: { id: 'desc' },
+      include: {
+        user: {
+          select: {
+            name: true
+          }
+        }
+      }
     });
+    
     const hasNextPage = collections.length > parseInt(limit as string);
     // Remove the extra record from collections array
     if (hasNextPage) {
@@ -35,7 +43,11 @@ export async function POST(req: NextRequest) {
         description,
         stocks,
         price,
-        user_id,
+        user: {
+          connect: {
+            id: user_id
+          }
+        }
       },
     });
     return Response.json(newCollection);
@@ -55,7 +67,14 @@ export async function PATCH(req: NextRequest) {
         name,
         description,
         stocks,
-        price
+        price,
+      },
+      include: {
+        user: {
+          select: {
+            name: true
+          }
+        }
       }
     })
     return Response.json(updated)
@@ -74,8 +93,6 @@ export async function DELETE(req: NextRequest) {
     });
     return Response.json({}, { status: 200 });
   } catch (error) {
-    console.log(error);
-    
     return NextResponse.json({ error: 'Internal Server Error'}, { status: 500 })
   }
 }

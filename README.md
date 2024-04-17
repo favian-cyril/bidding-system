@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+## How to start project
 
-## Getting Started
+Prerequisites:
+npm, npx and Node18+
 
-First, run the development server:
+Step 1:
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Create .env file with content:
+```
+# Required
+DATABASE_URL="file:./{{database_name}}.db"
+# Optional defaults to http://localhost:3000
+BASE_URL="http://localhost:3000"
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Step 2:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Run these commands:
+```bash
+npm i
+# Generate database file
+npm generate-db
+# Generate mock data
+npm generate-mock
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+npm run dev
+```
 
-## Learn More
+## Questions
 
-To learn more about Next.js, take a look at the following resources:
+How would you monitor the application to ensure it is running smoothly?
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+To ensure the application is running smoothly we need to be able to monitor its performance and errors, we can achieve that by integrating with software such as sentry. We would then be able to store data such as response times, load times and any unhandled errors in the dashboard which can be further integrated with error reporting and auto assigning tasks to team members.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+How would you address scalability and performance?
 
-## Deploy on Vercel
+- Scalability issues can be solved by first docoupling backend and frontend server to have a better understanding and control of how much load and where the bottleneck is, from there we can decide what methods to use to scale such as using load balancer, horizontal scaling, caching and others. Database should also be adjusted to be more scalable such using postgresql or mysql which has features to enable replication or sharding, luckily because this project uses prisma we can change database easily without needing to define the schema again. Lastly another important factor to consider is scalability testing such as load testing which can give you an estimate on how well the system performs under load.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Performance should always be monitored and examined constantly. Currently the application should be sufficient for the amount of data that it has, but if performance starts to degrade there are a few solutions that can be applied. Query optimization is one of the solutions that can increase performance even though there is no expensive joins currently. This requires monitoring of the database queries which are usually handled by the RDBMS
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+Trade-offs you had to choose when doing this challenge
+
+I think if I were to create a real application I would choose to use something like Firebase or Supabase instead because it would really increase the development speed especially if auth is needed. Also as a personal preference and because this is the first time I've used nextjs' server components/actions and I prefer the design of something like SvelteKit which is simpler in terms of separating client side and server side. Currently there's a bug when running the test because of the use of experimental feature in react-dom and I haven't been able to find a workaround yet.

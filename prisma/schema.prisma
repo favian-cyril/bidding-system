@@ -15,7 +15,7 @@ model Collection {
   name        String
   description String?
   stocks      Int
-  price       Float
+  price       Int
   user        User      @relation(fields: [user_id], references: [id])
   user_id     Int
   isComplete  Boolean   @default(false)

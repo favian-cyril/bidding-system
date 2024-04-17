@@ -1,19 +1,21 @@
 'use client'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { useCallback, useEffect, useState } from "react";
-import { Bid } from "@prisma/client";
-import { acceptBid, deleteBid, getBids } from "@/app/actions";
+import { acceptBid, createBid, deleteBid, getBids, updateBid } from "@/app/actions";
 import { Button } from "./ui/button";
 import { DropdownMenu, DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
 import { DropdownMenuContent, DropdownMenuItem } from "./ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
+import BidDialog from "./BidDialog";
+import { toast } from "sonner";
+import { BidWithUser } from "@/app/types";
 
-type BidItem = Bid & { user: { name: string, email: string }};
-
-export default function BidsTable({ collection_id, currentUser }: { collection_id: number, currentUser: boolean }) {
-  const [data, setData] = useState<BidItem[]>([])
+export default function BidsTable({ collection_id, currentUser, user_id }: { collection_id: number, currentUser: boolean, user_id: number }) {
+  const [data, setData] = useState<BidWithUser[]>([])
   const [deleteBidDialog, setDeleteBidDialog] = useState<boolean>(false)
-  const [selected, setSelected] = useState<BidItem>()
+  const [selected, setSelected] = useState<BidWithUser>()
+  const [isEdit, setIsEdit] = useState<boolean>(false);
+  const [openBidDialog, setOpenBidDialog] = useState(false);
 
   const fetchBids = useCallback(
     async () => {
@@ -30,7 +32,7 @@ export default function BidsTable({ collection_id, currentUser }: { collection_i
   }, [collection_id, fetchBids])
 
   
-  const handleShowDeleteDialog = (bid: BidItem) => {
+  const handleShowDeleteDialog = (bid: BidWithUser) => {
     setSelected(bid)
     setDeleteBidDialog(true);
   }
@@ -45,13 +47,47 @@ export default function BidsTable({ collection_id, currentUser }: { collection_i
       await deleteBid(selected.id, selected.collection_id);
       await fetchBids()
       handleCloseDeleteDialog()
+      toast.error('Bid Deleted')
     }
   }
 
-  const handleAcceptBid = async (bid: BidItem) => {
+  const handleAcceptBid = async (bid: BidWithUser) => {
     await acceptBid(bid.collection_id, bid.id);
-    await fetchBids()
+    await fetchBids();
+    toast.success('Bid Accepted')
   }
+
+  const handleOpenEditBid = async (bid: BidWithUser) => {
+    setOpenBidDialog(true);
+    setSelected(bid);
+    setIsEdit(true);
+  }
+
+  const handleOpenCreateBid = async () => {
+    setOpenBidDialog(true);
+  }
+
+  const handleShowDialog = async (open: boolean) => {
+    setOpenBidDialog(open);
+    setIsEdit(false);
+    setSelected(undefined)
+  }
+
+  const handleBidDialogForm = async (_:any, data: FormData) => {
+    let newData;
+    if (isEdit) {
+      newData = await updateBid(data, collection_id)
+    } else {
+      newData = await createBid(data, collection_id, user_id);
+    }
+    if (newData?.errors) {
+      return { errors: newData?.errors }
+    }
+    await fetchBids()
+    handleShowDialog(false)
+    toast.success(isEdit ? 'Bid Edited' : 'Bid Created')
+  }
+  
   return (
     <div>
       <Table>
@@ -76,7 +112,7 @@ export default function BidsTable({ collection_id, currentUser }: { collection_i
                   <DropdownMenuTrigger asChild><Button variant="outline">Action</Button></DropdownMenuTrigger>
                   <DropdownMenuContent>
                     {currentUser && <DropdownMenuItem onClick={() => handleAcceptBid(bid)}>Accept</DropdownMenuItem>}
-                    <DropdownMenuItem>Edit</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleOpenEditBid(bid)}>Edit</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleShowDeleteDialog(bid)}>Cancel</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -85,6 +121,10 @@ export default function BidsTable({ collection_id, currentUser }: { collection_i
           ))}
         </TableBody>
       </Table>
+      {data.length === 0 && <div className="py-4 w-full text-center">There are no bids yet.</div>}
+      {!currentUser && <div className="flex w-full justify-end mt-2">
+        <Button className="w-24" onClick={handleOpenCreateBid}>Bid</Button>
+      </div>}
       <AlertDialog open={deleteBidDialog} onOpenChange={setDeleteBidDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -99,6 +139,7 @@ export default function BidsTable({ collection_id, currentUser }: { collection_i
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <BidDialog open={openBidDialog} onOpenChange={handleShowDialog} bid={selected} action={handleBidDialogForm} isEdit={isEdit} />
     </div>
   )
 }

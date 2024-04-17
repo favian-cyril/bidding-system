@@ -20,14 +20,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         }
       }
     });
-    if (bids.length === 0) {
-      throw Error('Not found')
-    }
     return Response.json({ bids })
   } catch (error: any) {  
-    if (error.message === 'Not found') {
-      return NextResponse.json({ error: 'Collection ID not found'}, { status: 400 })
-    }
     return NextResponse.json({ error: 'Internal Server Error'}, { status: 500 })
   }
 }
@@ -38,9 +32,17 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const { price, user_id } = await req.json();
     const newBid = await prisma.bid.create({
       data: {
-        collection_id,
         price,
-        user_id,
+        collection: {
+          connect: {
+            id: collection_id
+          }
+        },
+        user: {
+          connect: {
+            id: user_id
+          }
+        }
       },
     });
     return Response.json(newBid);

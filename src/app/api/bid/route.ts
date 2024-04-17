@@ -9,6 +9,7 @@ export async function PATCH(req: NextRequest) {
         id,
       },
       data: {
+        id,
         price
       }
     })
@@ -21,8 +22,6 @@ export async function PATCH(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     const { id } = await req.json();
-    console.log('id', id);
-    
     await prisma.bid.delete({
       where: {
         id,
@@ -30,8 +29,6 @@ export async function DELETE(req: NextRequest) {
     });
     return Response.json({}, { status: 200 });
   } catch (error) {
-    console.log(error);
-    
     return NextResponse.json({ error: 'Internal Server Error'}, { status: 500 })
   }
 }

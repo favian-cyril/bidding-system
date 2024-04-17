@@ -1,12 +1,12 @@
 'use server'
 
 import { revalidateTag } from "next/cache";
-import { BidsResponse, CollectionResponse } from "./types";
+import { BidsResponse, CollectionResponse, UsersResponse } from "./types";
 import { z } from 'zod'
 
-const BASE_URL = process.env.BASE_URL;
+const BASE_URL = process.env.BASE_URL || "http://localhost:3000";
 
-const collectionSchema = z.object({
+const editCollectionSchema = z.object({
   id: z.number(),
   name: z.string({
     required_error: 'Name Required',
@@ -17,11 +17,43 @@ const collectionSchema = z.object({
   price: z.number({
     required_error: 'Price Required',
   }).min(1),
-  stock: z.number({
+  stocks: z.number({
     required_error: 'Stock Required',
   }).min(1),
 })
 
+const createCollectionSchema = z.object({
+  user_id: z.number(),
+  name: z.string({
+    required_error: 'Name Required',
+  }).min(1),
+  description: z.string({
+    required_error: 'Description Required',
+  }).min(1),
+  price: z.number({
+    required_error: 'Price Required',
+  }).min(1),
+  stocks: z.number({
+    required_error: 'Stock Required',
+  }).min(1),
+})
+
+const createBidSchema = z.object({
+  price: z.number({
+    required_error: 'Price Required',
+  }).min(1),
+  user_id: z.number(),
+  collection_id: z.number()
+})
+
+const updateBidSchema = z.object({
+  price: z.number({
+    required_error: 'Price Required',
+  }).min(1),
+  id: z.number(),
+})
+
+// Collections Actions
 export async function getCollections(cursor?: number, limit: number = 10): Promise<CollectionResponse> {
   const params = new URLSearchParams({
     limit: limit.toString(),
@@ -37,7 +69,59 @@ export async function getCollections(cursor?: number, limit: number = 10): Promi
   });
   return await res.json();
 }
+export async function deleteCollection(collection_id: number) {
+  const res = await fetch(BASE_URL + `/api/collections`, {
+    method: 'DELETE',
+    body: JSON.stringify({
+      id: collection_id
+    }),
+  })
+  revalidateTag(`bids-${collection_id}`)
+  return await res.json();
+}
 
+export async function editCollection(formData: FormData) {
+  const validatedFields = editCollectionSchema.safeParse({
+    id: parseInt(formData.get('id') as string),
+    name: formData.get('name'),
+    description: formData.get('description'),
+    price: parseInt(formData.get('price') as string),
+    stocks: parseInt(formData.get('stock') as string)
+  })
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+    }
+  }
+  const res = await fetch(BASE_URL + `/api/collections`, {
+    method: 'PATCH',
+    body: JSON.stringify(validatedFields.data),
+  });
+  revalidateTag('collections');
+  return await res.json();
+}
+
+export async function createCollection(formData: FormData) {
+  const validatedFields = createCollectionSchema.safeParse({
+    name: formData.get('name'),
+    description: formData.get('description'),
+    price: parseInt(formData.get('price') as string),
+    stocks: parseInt(formData.get('stock') as string),
+    user_id: parseInt(formData.get('user_id') as string)
+  })
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+    }
+  }
+  const res = await fetch(BASE_URL + `/api/collections`, {
+    method: 'POST',
+    body: JSON.stringify(validatedFields.data),
+  });
+  revalidateTag('collections');
+  return await res.json();
+}
+// Bid Actions
 export async function getBids(collection_id: number): Promise<BidsResponse> {
   const res = await fetch(BASE_URL + `/api/collections/${collection_id}/bids`, {
     method: 'GET',
@@ -48,13 +132,19 @@ export async function getBids(collection_id: number): Promise<BidsResponse> {
   return await res.json();
 }
 
-export async function updateBid(bid_id: number, data: { price: number }, collection_id: number) {
+export async function updateBid(formData: FormData, collection_id: number) {
+  const validatedFields = updateBidSchema.safeParse({
+    price: parseInt(formData.get('price') as string),
+    id: parseInt(formData.get('id') as string),
+  })
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+    }
+  }
   const res = await fetch(BASE_URL + `/api/bid`, {
     method: 'PATCH',
-    body: JSON.stringify({
-      id: bid_id,
-      price: data.price
-    }),
+    body: JSON.stringify(validatedFields.data),
   })
   revalidateTag(`bids-${collection_id}`)
   return await res.json();
@@ -82,36 +172,28 @@ export async function deleteBid(bid_id: number, collection_id: number) {
   return await res.json();
 }
 
-export async function deleteCollection(collection_id: number) {
-  const res = await fetch(BASE_URL + `/api/collections`, {
-    method: 'DELETE',
-    body: JSON.stringify({
-      id: collection_id
-    }),
-  })
-  revalidateTag(`bids-${collection_id}`)
-  return await res.json();
-}
-
-export async function editCollection(prevState: any, formData: FormData) {
-  const validatedFields = collectionSchema.safeParse({
-    id: parseInt(formData.get('id') as string),
-    name: formData.get('name'),
-    description: formData.get('description'),
+export async function createBid(formData: FormData, collection_id: number, user_id: number) {
+  const validatedFields = createBidSchema.safeParse({
     price: parseInt(formData.get('price') as string),
-    stock: parseInt(formData.get('stock') as string)
-  })
-  console.log(validatedFields);
-  
+    user_id,
+    collection_id,
+  });
   if (!validatedFields.success) {
     return {
       errors: validatedFields.error.flatten().fieldErrors,
     }
   }
-  const res = await fetch(BASE_URL + `/api/collections`, {
-    method: 'PATCH',
+  const res = await fetch(BASE_URL + `/api/collections/${collection_id}/bids`, {
+    method: 'POST',
     body: JSON.stringify(validatedFields.data),
-  });
-  revalidateTag('collections');
+  })
+  revalidateTag(`bids-${collection_id}`)
   return await res.json();
+}
+// Users actions
+export async function getUsers(): Promise<UsersResponse> {
+  const res = await fetch(BASE_URL + '/api/users', {
+    method: 'GET'
+  })
+  return await res.json()
 }
