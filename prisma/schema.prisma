@@ -13,7 +13,7 @@ datasource db {
 model Collection {
   id          Int       @id @default(autoincrement())
   name        String
-  description String?
+  description String
   stocks      Int
   price       Int
   user        User      @relation(fields: [user_id], references: [id])
