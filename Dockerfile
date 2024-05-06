@@ -10,4 +10,4 @@ COPY . .
 ARG DATABASE_URL
 ARG BASE_URL
 
-RUN yarn build
+RUN npm run build
